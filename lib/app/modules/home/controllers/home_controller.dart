@@ -45,13 +45,31 @@ class HomeController extends GetxController {
     if (slot.start == '00:00' && isUp || slot.end == '23:45' && !isUp) return;
     final doubleSlot = doubleSlotIndex(slot);
     if (doubleSlot == 0 && isUp || doubleSlot == 1 && !isUp) return;
-    slot.position += isUp ? -fiveHeight : fiveHeight;
+
     final offset = [slot.start, slot.end].map((e) => formatHHmm
         .format(formatHHmm.parse(e).add(Duration(minutes: isUp ? -5 : 5))));
-    slot.start = offset.first;
-    slot.end = offset.last;
+    final movedSlot = Slot(
+      slot.position + (isUp ? -fiveHeight : fiveHeight),
+      offset.first,
+      offset.last,
+    );
 
+    if (chainLength(movedSlot, slots.toList()..remove(slot)) >= 3) return;
+
+    slot.position = movedSlot.position;
+    slot.start = movedSlot.start;
+    slot.end = movedSlot.end;
     slots.refresh();
+  }
+
+  int chainLength(Slot slot, List<Slot> slots) {
+    slots.remove(slot);
+    for (final other in slots) {
+      if (slot.start == other.end || slot.end == other.start) {
+        return chainLength(other, slots) + 1;
+      }
+    }
+    return 1;
   }
 
   int doubleSlotIndex(Slot slot) {
@@ -68,6 +86,7 @@ class HomeController extends GetxController {
         return true;
       }
     }
+    if (chainLength(slot, slots.toList()) >= 3) return true;
     return false;
   }
 }
