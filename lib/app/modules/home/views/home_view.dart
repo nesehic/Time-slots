@@ -27,14 +27,26 @@ class HomeView extends GetView<HomeController> {
                   transform: Matrix4.identity()
                     ..setTranslationRaw(
                       0.0,
-                      controller.firstPositionY + controller.position.value,
+                      controller.firstPositionY +
+                          controller.slot.position.value,
                       0.0,
                     ),
                   margin: const EdgeInsets.only(left: 50.0),
                   width: double.infinity,
-                  height: controller.fourtyFiveHeight,
+                  height: fourtyFiveHeight,
                   color: Colors.amber,
-                  child: Text(controller.text),
+                  child: GestureDetector(
+                    onVerticalDragStart: (details) {
+                      controller.dragOffset = 0.0;
+                    },
+                    onVerticalDragUpdate: (details) {
+                      controller.dragOffset += details.delta.dy;
+                      if (controller.dragOffset.abs() < fiveHeight) return;
+                      controller.addPosition(controller.slot);
+                      controller.dragOffset = 0.0;
+                    },
+                    child: SizedBox.expand(child: Text(controller.slot.text)),
+                  ),
                 ),
               ),
             ],
@@ -48,14 +60,15 @@ class HomeView extends GetView<HomeController> {
     return GestureDetector(
       onTap: () {
         final times = controller.getTimesFromMiddle(time);
-        controller.text = times.map((e) => formatHHmm.format(e)).join(' - ');
-        controller.position.value = controller.getPositionFromTime(
+        controller.slot.text =
+            times.map((e) => formatHHmm.format(e)).join(' - ');
+        controller.slot.position.value = controller.getPositionFromTime(
           times.first,
         );
       },
       child: Container(
         color: Colors.transparent,
-        height: controller.fifteenHeight,
+        height: fifteenHeight,
         child: Row(
           children: [
             Text(formatHHmm.format(time)),

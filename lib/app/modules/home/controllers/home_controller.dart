@@ -3,14 +3,20 @@ import 'package:intl/intl.dart';
 
 final formatHHmm = DateFormat('HH:mm');
 
-class HomeController extends GetxController {
-  final fifteenHeight = 60.0; // Must be divisible by 3 and 2
-  late final fiveHeight = fifteenHeight / 3.0;
-  late final fourtyFiveHeight = fifteenHeight * 3.0;
+const fifteenHeight = 60.0;
+const fiveHeight = fifteenHeight / 3.0;
+const fourtyFiveHeight = fifteenHeight * 3.0;
 
-  final firstPositionY = 0.0;
-  final position = 0.0.obs;
+class Slot {
+  final position = (-fourtyFiveHeight).obs;
   String text = '00:00 - 00:45';
+}
+
+class HomeController extends GetxController {
+  final firstPositionY = 0.0;
+  double dragOffset = 0.0;
+
+  final slot = Slot();
 
   List<DateTime> getTimesFromMiddle(DateTime time) {
     final start = time.add(const Duration(days: 1, minutes: -20));
@@ -31,5 +37,15 @@ class HomeController extends GetxController {
     final minutes = start.hour * 60 + start.minute;
     final index = minutes / 5;
     return fiveHeight * index + fifteenHeight / 2.0;
+  }
+
+  void addPosition(Slot slot) {
+    slot.position.value += dragOffset > fiveHeight ? fiveHeight : -fiveHeight;
+    slot.text = slot.text
+        .split(' - ')
+        .map((e) => formatHHmm.format(formatHHmm
+            .parse(e)
+            .add(Duration(minutes: dragOffset > fiveHeight ? 5 : -5))))
+        .join(' - ');
   }
 }
