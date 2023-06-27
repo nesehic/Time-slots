@@ -40,12 +40,17 @@ class HomeController extends GetxController {
   }
 
   void addPosition(Slot slot) {
-    slot.position.value += dragOffset > fiveHeight ? fiveHeight : -fiveHeight;
+    final isUp = dragOffset < fiveHeight;
+    final edgeCases = ['00:00', '23:45'];
+    final times = slot.text.split(' - ');
+    if (edgeCases[0] == times[0] && isUp || edgeCases[1] == times[1] && !isUp) {
+      return;
+    }
+    slot.position.value += isUp ? -fiveHeight : fiveHeight;
     slot.text = slot.text
         .split(' - ')
-        .map((e) => formatHHmm.format(formatHHmm
-            .parse(e)
-            .add(Duration(minutes: dragOffset > fiveHeight ? 5 : -5))))
+        .map((e) => formatHHmm
+            .format(formatHHmm.parse(e).add(Duration(minutes: isUp ? -5 : 5))))
         .join(' - ');
   }
 }
