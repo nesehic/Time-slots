@@ -28,7 +28,8 @@ class HomeController extends GetxController {
     if (start.day == 1) {
       return [formatHHmm.parse('00:00'), formatHHmm.parse('00:45')];
     }
-    if (end.hour == 23 && end.minute > 25) {
+    if (end.hour == 23 && end.minute > 25 ||
+        end.hour == 0 && end.minute == 10) {
       return [formatHHmm.parse('23:00'), formatHHmm.parse('23:45')];
     }
     return [start, end];
