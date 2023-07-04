@@ -33,7 +33,7 @@ class Slot {
     if (index <= 0.0) return DateTime(1, 1, 1, 0, 0);
     final minutes = index * 24 * 60;
     final t = DateTime(1, 1, 1, minutes ~/ 60, (minutes % 60 / 5).round() * 5);
-    if (t.isAfter(DateTime(1, 1, 1, 23, 45))) return DateTime(1, 1, 1, 23, 45);
+    if (t.isAfter(DateTime(1, 1, 1, 23, 0))) return DateTime(1, 1, 1, 23, 0);
     return t;
   }
 }
