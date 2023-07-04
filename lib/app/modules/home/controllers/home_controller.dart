@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
@@ -6,72 +7,44 @@ final formatHHmm = DateFormat('HH:mm');
 const fifteenHeight = 40.0;
 const fiveHeight = fifteenHeight / 3.0;
 const fourtyFiveHeight = fifteenHeight * 3.0;
+const fullHeight = 96 * fifteenHeight;
 
 class Slot {
-  double position;
-  String start;
-  String end;
+  late double position;
+  late String start;
+  late String end;
   String get text => '$start - $end';
-  Slot(this.position, this.start, this.end);
-}
 
-class HomeController extends GetxController {
-  final firstPositionY = 0.0;
-  double dragOffset = 0.0;
-
-  final slots = <Slot>[].obs;
-
-  List<DateTime> getTimesFromMiddle(DateTime time) {
-    final start = time.add(const Duration(days: 1, minutes: -20));
-    final end = start.add(const Duration(minutes: 45));
-
-    if (start.day == 1) {
-      return [formatHHmm.parse('00:00'), formatHHmm.parse('00:45')];
-    }
-    if (end.hour == 23 && end.minute > 25 ||
-        end.hour == 0 && end.minute == 10) {
-      return [formatHHmm.parse('23:00'), formatHHmm.parse('23:45')];
-    }
-    return [start, end];
+  Slot(double position) {
+    final start = _getTimeFromPosition(position);
+    this.position = _getPositionFromTime(start);
+    this.start = formatHHmm.format(start);
+    end = formatHHmm.format(start.add(const Duration(minutes: 45)));
   }
 
-  double getPositionFromTime(DateTime start) {
+  double _getPositionFromTime(DateTime start) {
     final minutes = start.hour * 60 + start.minute;
     final index = minutes / 5;
     return fiveHeight * index + fifteenHeight / 2.0;
   }
 
-  void dragSlot(Slot slot) {
-    final isUp = dragOffset < fiveHeight;
-    if (slot.start == '00:00' && isUp || slot.end == '23:45' && !isUp) return;
-    final doubleSlot = doubleSlotIndex(slot);
-    if (doubleSlot == 0 && isUp || doubleSlot == 1 && !isUp) return;
-
-    final offset = [slot.start, slot.end].map((e) => formatHHmm
-        .format(formatHHmm.parse(e).add(Duration(minutes: isUp ? -5 : 5))));
-    final movedSlot = Slot(
-      slot.position + (isUp ? -fiveHeight : fiveHeight),
-      offset.first,
-      offset.last,
-    );
-
-    if (chainLength(movedSlot, slots.toList()..remove(slot)) >= 3) return;
-
-    slot.position = movedSlot.position;
-    slot.start = movedSlot.start;
-    slot.end = movedSlot.end;
-    slots.refresh();
+  DateTime _getTimeFromPosition(double position) {
+    final index = (position - fifteenHeight / 2.0) / fullHeight;
+    if (index <= 0.0) return DateTime(1, 1, 1, 0, 0);
+    final minutes = index * 24 * 60;
+    final t = DateTime(1, 1, 1, minutes ~/ 60, (minutes % 60 / 5).round() * 5);
+    if (t.isAfter(DateTime(1, 1, 1, 23, 45))) return DateTime(1, 1, 1, 23, 45);
+    return t;
   }
+}
 
-  int chainLength(Slot slot, List<Slot> slots) {
-    slots.remove(slot);
-    for (final other in slots) {
-      if (slot.start == other.end || slot.end == other.start) {
-        return chainLength(other, slots) + 1;
-      }
-    }
-    return 1;
-  }
+class HomeController extends GetxController {
+  final scrollController = ScrollController();
+  final firstPositionY = 0.0;
+  double fingerOffset = 0.0;
+  Slot? draggedSlot;
+
+  final slots = <Slot>[].obs;
 
   int doubleSlotIndex(Slot slot) {
     for (final other in slots) {
@@ -81,13 +54,45 @@ class HomeController extends GetxController {
     return -1;
   }
 
-  bool hasCollision(Slot slot) {
+  int _chainLength(Slot slot, List<Slot> slots) {
+    slots.remove(slot);
     for (final other in slots) {
-      if ((slot.position - other.position).abs() < fourtyFiveHeight) {
-        return true;
+      if (slot.start == other.end || slot.end == other.start) {
+        return _chainLength(other, slots) + 1;
       }
     }
-    if (chainLength(slot, slots.toList()) >= 3) return true;
+    return 1;
+  }
+
+  Object collisions(Slot slot, List<Slot> slots) {
+    for (final other in slots) {
+      final s = formatHHmm.parse(slot.start);
+      final o = formatHHmm.parse(other.start);
+      if (s.difference(o).inMinutes.abs() < 45) return other;
+    }
+    if (_chainLength(slot, slots.toList()) >= 3) return true;
     return false;
+  }
+
+  void onDrag(DragUpdateDetails details, Slot slot) {
+    // if (draggedSlot.hashCode != slot.hashCode) return;
+    var newSlot = Slot(
+      details.globalPosition.dy -
+          fingerOffset -
+          fifteenHeight +
+          scrollController.offset,
+    );
+    var collisionStatus = collisions(newSlot, slots.toList()..remove(slot));
+    if (collisionStatus is Slot) {
+      newSlot = Slot(collisionStatus.position +
+          fourtyFiveHeight * (details.delta.dy > 0 ? 1 : -1));
+      if (collisions(newSlot, slots.toList()..remove(slot)) != false) return;
+    } else if (collisionStatus != false) {
+      return;
+    }
+    slot.position = newSlot.position;
+    slot.start = newSlot.start;
+    slot.end = newSlot.end;
+    slots.refresh();
   }
 }
